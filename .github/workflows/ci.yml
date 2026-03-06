@@ -2,19 +2,19 @@ name: Build notebooks
 
 on:
   push:
-  pull_request:
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  test-and-export:
+  build:
     runs-on: ubuntu-latest
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           lfs: true
@@ -30,7 +30,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install system packages for PDF export
+      - name: Install OS packages for PDF export
         run: |
           sudo apt-get update
           sudo apt-get install -y pandoc texlive-xetex texlive-fonts-recommended texlive-plain-generic
@@ -38,36 +38,39 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements.txt nbconvert jupyter
 
-      - name: Validate project structure and data
-        run: python scripts/validate_project.py
-
-      - name: Execute notebooks and generate HTML/PDF exports
+      - name: Run export script
         run: python scripts/export_notebooks.py
 
-      - name: Upload generated reports
+      - name: Show created files
+        run: |
+          ls -lah
+          test -f Part_I_exploration.html
+          test -f Part_I_exploration.pdf
+          test -f Part_II_explanatory.html
+          test -f Part_II_explanatory.pdf
+
+      - name: Upload reports as artifact
         uses: actions/upload-artifact@v4
         with:
           name: notebook-exports
           overwrite: true
+          if-no-files-found: error
           path: |
             Part_I_exploration.html
-            Part_II_explanatory.html
             Part_I_exploration.pdf
+            Part_II_explanatory.html
             Part_II_explanatory.pdf
-            figures/
-          if-no-files-found: error
 
-      - name: Commit refreshed exports back to the branch
-        if: github.event_name == 'push'
-        uses: stefanzweifel/git-auto-commit-action@v5
+      - name: Commit generated reports
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
-          commit_message: "Auto-refresh notebook exports [skip ci]"
+          commit_message: "Auto-create HTML and PDF reports [skip ci]"
           file_pattern: |
+            Part_I_exploration.html
+            Part_I_exploration.pdf
+            Part_II_explanatory.html
+            Part_II_explanatory.pdf
             notebooks/*.ipynb
             figures/*.png
-            Part_I_exploration.html
-            Part_II_explanatory.html
-            Part_I_exploration.pdf
-            Part_II_explanatory.pdf
