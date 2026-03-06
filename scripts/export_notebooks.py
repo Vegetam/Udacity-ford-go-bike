@@ -1,5 +1,6 @@
 from pathlib import Path
 import subprocess
+import sys
 
 ROOT = Path(__file__).resolve().parent.parent
 NOTEBOOKS = ROOT / "notebooks"
@@ -9,24 +10,25 @@ jobs = [
     ("Part_II_explanatory.ipynb", "Part_II_explanatory"),
 ]
 
-def run_cmd(cmd):
-    print("Running:", " ".join(map(str, cmd)))
-    return subprocess.run(cmd, cwd=ROOT, text=True, capture_output=True)
+def run(cmd):
+    result = subprocess.run(cmd, cwd=ROOT, text=True, capture_output=True)
+    if result.stdout:
+        print(result.stdout)
+    if result.stderr:
+        print(result.stderr, file=sys.stderr)
+    return result
 
-# remove old exports from repo root
+# Remove old exports from repo root
 for stem in ("Part_I_exploration", "Part_II_explanatory"):
     for ext in (".html", ".pdf"):
-        path = ROOT / f"{stem}{ext}"
-        if path.exists():
-            path.unlink()
+        p = ROOT / f"{stem}{ext}"
+        if p.exists():
+            p.unlink()
 
-pdf_failures = []
-
-for nb_name, out_name in jobs:
+# 1) Execute notebooks
+for nb_name, _ in jobs:
     nb_path = NOTEBOOKS / nb_name
-
-    # Execute notebook
-    result = run_cmd([
+    r = run([
         "jupyter", "nbconvert",
         "--to", "notebook",
         "--execute",
@@ -34,46 +36,45 @@ for nb_name, out_name in jobs:
         "--ExecutePreprocessor.timeout=1200",
         str(nb_path),
     ])
-    if result.returncode != 0:
-        print(result.stdout)
-        print(result.stderr)
-        raise RuntimeError(f"Notebook execution failed for {nb_name}")
+    if r.returncode != 0:
+        raise RuntimeError(f"Notebook execution failed: {nb_name}")
 
-    # Export HTML to repo root
-    result = run_cmd([
+# 2) Export ALL HTML first
+for nb_name, out_name in jobs:
+    nb_path = NOTEBOOKS / nb_name
+    r = run([
         "jupyter", "nbconvert",
         "--to", "html",
         "--output", out_name,
         "--output-dir", str(ROOT),
         str(nb_path),
     ])
-    if result.returncode != 0:
-        print(result.stdout)
-        print(result.stderr)
-        raise RuntimeError(f"HTML export failed for {nb_name}")
+    if r.returncode != 0:
+        raise RuntimeError(f"HTML export failed: {nb_name}")
 
-    # Export PDF to repo root, but do not stop everything if it fails
-    result = run_cmd([
+# 3) Export PDFs, but do both attempts before failing
+pdf_failures = []
+for nb_name, out_name in jobs:
+    nb_path = NOTEBOOKS / nb_name
+    r = run([
         "jupyter", "nbconvert",
         "--to", "pdf",
         "--output", out_name,
         "--output-dir", str(ROOT),
         str(nb_path),
     ])
-    if result.returncode != 0:
-        print(result.stdout)
-        print(result.stderr)
+    if r.returncode != 0:
         pdf_failures.append(nb_name)
 
-print("Created files in repo root:")
+print("Repo root contents:")
 for name in [
     "Part_I_exploration.html",
     "Part_I_exploration.pdf",
     "Part_II_explanatory.html",
     "Part_II_explanatory.pdf",
 ]:
-    path = ROOT / name
-    print(f"{name}: {'OK' if path.exists() else 'MISSING'}")
+    p = ROOT / name
+    print(f"{name}: {'OK' if p.exists() else 'MISSING'}")
 
 if pdf_failures:
-    raise RuntimeError(f"PDF export failed for: {', '.join(pdf_failures)}")
+    raise RuntimeError("PDF export failed for: " + ", ".join(pdf_failures))
