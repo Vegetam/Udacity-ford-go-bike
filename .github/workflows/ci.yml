@@ -50,6 +50,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: notebook-exports
+          overwrite: true
           path: |
             Part_I_exploration.html
             Part_II_explanatory.html

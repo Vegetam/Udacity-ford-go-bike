@@ -95,9 +95,11 @@ python scripts/export_notebooks.py
 
 Every push now triggers GitHub Actions to:
 
+- pull the LFS-tracked dataset
 - validate the dataset and notebook files
 - execute both notebooks
-- regenerate the HTML and PDF reports
+- regenerate the HTML and PDF reports in the repo root
+- overwrite old exports with the latest versions
 - upload those files as workflow artifacts
 - commit refreshed exports back to the branch automatically
 
@@ -153,3 +155,14 @@ Every push now triggers GitHub Actions to:
 ## Author
 
 Udacity Data Analyst Nanodegree Project — Data Visualization
+
+
+## Important Git setup for the large CSV
+
+This repo includes `.gitattributes` so `data/fordgobike_2019_02.csv` is tracked with Git LFS. On a new machine, run:
+
+```bash
+git lfs install
+```
+
+Then add/commit/push normally. If you previously committed the CSV without LFS, rewrite history or start from a fresh repo before pushing.
