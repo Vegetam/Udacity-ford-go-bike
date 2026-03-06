@@ -64,21 +64,19 @@ jobs:
             Part_II_explanatory.pdf
           if-no-files-found: warn
 
-      - name: Stage all generated files
+      - name: Commit and push generated files
         run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -f Part_I_exploration.html Part_II_explanatory.html || true
-          git add -f Part_I_exploration.pdf Part_II_explanatory.pdf || true
-          git add -f notebooks/*.ipynb || true
-          git add -f figures/*.png || true
-
-      - name: Commit refreshed exports back to the branch
-        uses: stefanzweifel/git-auto-commit-action@v7
-        with:
-          commit_message: "Auto-refresh notebook exports [skip ci]"
-          file_pattern: |
-            Part_I_exploration.html
-            Part_I_exploration.pdf
-            Part_II_explanatory.html
-            Part_II_explanatory.pdf
-            notebooks/*.ipynb
-            figures/*.png
+          git add -f Part_I_exploration.pdf  Part_II_explanatory.pdf  || true
+          git add -f notebooks/*.ipynb  || true
+          git add -f figures/*.png      || true
+          git status
+          git diff --cached --stat
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Auto-refresh notebook exports [skip ci]"
+            git push
+          fi
